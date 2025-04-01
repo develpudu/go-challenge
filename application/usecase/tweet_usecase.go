@@ -82,3 +82,20 @@ func (uc *TweetUseCase) GetTimeline(userID string) ([]*entity.Tweet, error) {
 	// Get timeline
 	return uc.tweetRepository.GetTimeline(userID)
 }
+
+// Retrieves all tweets from the repository
+func (uc *TweetUseCase) GetAllTweets() ([]*entity.Tweet, error) {
+	return uc.tweetRepository.FindAll()
+}
+
+// Retrieves a specific tweet by its ID
+func (uc *TweetUseCase) GetTweetByID(tweetID string) (*entity.Tweet, error) {
+	tweet, err := uc.tweetRepository.FindByID(tweetID)
+	if err != nil {
+		return nil, err
+	}
+	if tweet == nil {
+		return nil, entity.ErrTweetNotFound
+	}
+	return tweet, nil
+}

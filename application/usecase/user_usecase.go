@@ -122,3 +122,8 @@ func (uc *UserUseCase) GetFollowing(userID string) ([]*entity.User, error) {
 
 	return uc.userRepository.FindFollowing(userID)
 }
+
+// Retrieves all users from the repository
+func (uc *UserUseCase) GetAllUsers() ([]*entity.User, error) {
+	return uc.userRepository.FindAll()
+}

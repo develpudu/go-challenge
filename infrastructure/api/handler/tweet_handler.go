@@ -146,7 +146,7 @@ func (h *TweetHandler) createTweet(w http.ResponseWriter, r *http.Request) {
 // Returns all tweets
 func (h *TweetHandler) getAllTweets(w http.ResponseWriter, r *http.Request) {
 	// Get all tweets
-	tweets, err := h.tweetUseCase.FindAll()
+	tweets, err := h.tweetUseCase.GetAllTweets()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
@@ -172,7 +172,7 @@ func (h *TweetHandler) getAllTweets(w http.ResponseWriter, r *http.Request) {
 // Returns a specific tweet
 func (h *TweetHandler) getTweet(w http.ResponseWriter, r *http.Request, tweetID string) {
 	// Get tweet
-	tweet, err := h.tweetUseCase.FindByID(tweetID)
+	tweet, err := h.tweetUseCase.GetTweetByID(tweetID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})

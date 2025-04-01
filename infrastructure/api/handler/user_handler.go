@@ -130,7 +130,7 @@ func (h *UserHandler) createUser(w http.ResponseWriter, r *http.Request) {
 // Returns all users
 func (h *UserHandler) getUsers(w http.ResponseWriter, r *http.Request) {
 	// Get all users
-	users, err := h.userUseCase.FindAll()
+	users, err := h.userUseCase.GetAllUsers()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
