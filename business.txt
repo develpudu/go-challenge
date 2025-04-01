@@ -1,0 +1,25 @@
+# Assumptions
+
+## Usuarios
+- No se requiere autenticación ni autorización. Los usuarios se identifican mediante un ID único enviado en las peticiones.
+- No hay límite en la cantidad de usuarios que un usuario puede seguir.
+- Un usuario no puede seguirse a sí mismo.
+
+## Tweets
+- Los tweets tienen un límite de 280 caracteres.
+- No se implementa funcionalidad de retweet, likes o respuestas en esta versión.
+- Los tweets se muestran en orden cronológico inverso (más recientes primero).
+
+## Timeline
+- El timeline muestra únicamente los tweets de los usuarios seguidos y del propio usuario.
+- No hay paginación implementada en esta versión inicial, pero se considera para futuras mejoras.
+
+## Escalabilidad
+- Para escalar a millones de usuarios, se recomienda implementar caching para los timelines.
+- En una implementación real, se utilizaría una base de datos distribuida como Cassandra o una combinación de PostgreSQL con Redis para optimizar lecturas.
+- Se podría implementar un sistema de colas para procesar la publicación de tweets de manera asíncrona.
+
+## Optimización para Lecturas
+- Se prioriza la velocidad de lectura sobre la escritura.
+- Se implementan estructuras de datos en memoria optimizadas para consultas rápidas.
+- En una implementación real, se utilizarían índices específicos en la base de datos para optimizar las consultas de timeline.

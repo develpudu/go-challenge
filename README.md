@@ -4,31 +4,47 @@ Esta es una implementación simplificada de una plataforma de microblogging simi
 
 ## Características
 
-- Publicación de tweets (máximo 280 caracteres)
-- Seguimiento de usuarios
-- Timeline personalizado con tweets de usuarios seguidos
-- API REST para interactuar con la plataforma
+- **Base de Datos**: Se utilizará una base de datos en memoria para simplificar el desarrollo inicial. En producción, se recomienda utilizar una base de datos relacional como PostgreSQL por su capacidad de manejo de grandes volúmenes de datos y su soporte para transacciones.
+
+- **Publicación de Tweets**: Los usuarios podrán publicar mensajes cortos de hasta 280 caracteres.
+
+- **Seguimiento de Usuarios**: Los usuarios podrán seguir a otros usuarios para ver sus tweets en el timeline.
+
+- **Timeline**: Se mostrará una línea de tiempo con los tweets de los usuarios seguidos.
+
 
 ## Arquitectura
 
-La aplicación sigue los principios de Clean Architecture, dividida en las siguientes capas:
+Se utilizará una arquitectura de capas, siguiendo principios de Clean Architecture para asegurar un diseño mantenible y escalable:
 
-### Capa de Dominio
+- **Capa de Aplicación**: Maneja la lógica de negocio y las reglas de la aplicación.
 
-Contiene las entidades del negocio (User, Tweet) y las interfaces de repositorio que definen cómo se accede a los datos.
+- **Capa de Dominio**: Define los modelos y entidades del sistema.
 
-### Capa de Aplicación
+- **Capa de Infraestructura**: Maneja la interacción con la base de datos y otros servicios externos.
 
-Contiene los casos de uso que implementan la lógica de negocio utilizando las entidades del dominio y las interfaces de repositorio.
+## Escalabilidad
 
-### Capa de Infraestructura
+La aplicación está diseñada para ser escalable:
 
-Contiene las implementaciones concretas de los repositorios (en memoria) y los controladores de la API REST.
+- Arquitectura limpia que permite cambiar fácilmente la implementación de los repositorios
+- Optimización para lecturas con caché de timelines
+- Posibilidad de implementar bases de datos distribuidas y sistemas de colas
+
+## Optimización para Lecturas
+
+La aplicación está optimizada para lecturas:
+
+- Caché de timelines en memoria
+- Estructuras de datos eficientes para consultas rápidas
+- Índices para búsquedas optimizadas
 
 ## Estructura del Proyecto
 
 ```
 .
+├── cmd/                   # Punto de entrada de la aplicación
+│   └── main.go            # Inicia la aplicación
 ├── application/           # Capa de aplicación
 │   └── usecase/           # Casos de uso
 ├── domain/                # Capa de dominio
@@ -39,8 +55,8 @@ Contiene las implementaciones concretas de los repositorios (en memoria) y los c
 │   │   └── handler/       # Controladores
 │   └── repository/        # Implementaciones de repositorio
 │       └── memory/        # Repositorios en memoria
-├── main.go                # Punto de entrada de la aplicación
 ├── business.txt           # Assumptions
+├── TODO.md                # Lista de tareas pendientes y mejoras futuras
 └── README.md              # Documentación
 ```
 
@@ -87,18 +103,5 @@ La aplicación estará disponible en http://localhost:8080
 
 Para simplificar, la aplicación utiliza un encabezado `User-ID` para identificar al usuario que realiza la petición.
 
-## Escalabilidad
-
-La aplicación está diseñada para ser escalable:
-
-- Arquitectura limpia que permite cambiar fácilmente la implementación de los repositorios
-- Optimización para lecturas con caché de timelines
-- Posibilidad de implementar bases de datos distribuidas y sistemas de colas
-
-## Optimización para Lecturas
-
-La aplicación está optimizada para lecturas:
-
-- Caché de timelines en memoria
-- Estructuras de datos eficientes para consultas rápidas
-- Índices para búsquedas optimizadas
+## Documentación
+La documentación esta en español latinoamericano, mientras que el código esta documentado en inglés.
