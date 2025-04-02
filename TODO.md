@@ -21,9 +21,9 @@
 - [x] Implementar configuración de la aplicación
 
 ## Testing
-- [ ] Escribir tests unitarios para la capa de dominio
-- [ ] Escribir tests unitarios para la capa de aplicación
-- [ ] Escribir tests de integración
+- [x] Escribir tests unitarios para la capa de dominio
+- [x] Escribir tests unitarios para la capa de aplicación
+- [x] Escribir tests de integración
 
 ## Documentación
 - [x] Crear documento de diseño de arquitectura

@@ -1,0 +1,377 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "API de Microblogging Ualá",
+    "description": "API para una plataforma de microblogging similar a Twitter",
+    "version": "1.0.0"
+  },
+  "host": "localhost:8080",
+  "basePath": "/",
+  "schemes": ["http"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "securityDefinitions": {
+    "UserID": {
+      "type": "apiKey",
+      "name": "User-ID",
+      "in": "header",
+      "description": "ID del usuario que realiza la petición"
+    }
+  },
+  "paths": {
+    "/users": {
+      "post": {
+        "summary": "Crear un nuevo usuario",
+        "description": "Crea un nuevo usuario en la plataforma",
+        "parameters": [
+          {
+            "name": "user",
+            "in": "body",
+            "description": "Datos del usuario a crear",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UserInput"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Usuario creado exitosamente",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          },
+          "400": {
+            "description": "Datos de entrada inválidos"
+          }
+        }
+      },
+      "get": {
+        "summary": "Obtener todos los usuarios",
+        "description": "Retorna una lista de todos los usuarios registrados",
+        "responses": {
+          "200": {
+            "description": "Lista de usuarios",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/User"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{id}": {
+      "get": {
+        "summary": "Obtener un usuario específico",
+        "description": "Retorna los datos de un usuario específico",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del usuario",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Datos del usuario",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          },
+          "404": {
+            "description": "Usuario no encontrado"
+          }
+        }
+      }
+    },
+    "/users/follow": {
+      "post": {
+        "summary": "Seguir a un usuario",
+        "description": "Permite a un usuario seguir a otro usuario",
+        "security": [
+          {
+            "UserID": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "followData",
+            "in": "body",
+            "description": "Datos para seguir a un usuario",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/FollowInput"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Usuario seguido exitosamente"
+          },
+          "400": {
+            "description": "Datos de entrada inválidos"
+          },
+          "404": {
+            "description": "Usuario no encontrado"
+          }
+        }
+      }
+    },
+    "/users/unfollow": {
+      "post": {
+        "summary": "Dejar de seguir a un usuario",
+        "description": "Permite a un usuario dejar de seguir a otro usuario",
+        "security": [
+          {
+            "UserID": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "unfollowData",
+            "in": "body",
+            "description": "Datos para dejar de seguir a un usuario",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/FollowInput"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Usuario dejado de seguir exitosamente"
+          },
+          "400": {
+            "description": "Datos de entrada inválidos"
+          },
+          "404": {
+            "description": "Usuario no encontrado"
+          }
+        }
+      }
+    },
+    "/tweets": {
+      "post": {
+        "summary": "Crear un nuevo tweet",
+        "description": "Crea un nuevo tweet en la plataforma",
+        "security": [
+          {
+            "UserID": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tweet",
+            "in": "body",
+            "description": "Datos del tweet a crear",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/TweetInput"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Tweet creado exitosamente",
+            "schema": {
+              "$ref": "#/definitions/Tweet"
+            }
+          },
+          "400": {
+            "description": "Datos de entrada inválidos"
+          },
+          "401": {
+            "description": "Usuario no autenticado"
+          }
+        }
+      },
+      "get": {
+        "summary": "Obtener todos los tweets",
+        "description": "Retorna una lista de todos los tweets publicados",
+        "responses": {
+          "200": {
+            "description": "Lista de tweets",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Tweet"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tweets/{id}": {
+      "get": {
+        "summary": "Obtener un tweet específico",
+        "description": "Retorna los datos de un tweet específico",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del tweet",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Datos del tweet",
+            "schema": {
+              "$ref": "#/definitions/Tweet"
+            }
+          },
+          "404": {
+            "description": "Tweet no encontrado"
+          }
+        }
+      }
+    },
+    "/users/tweets": {
+      "get": {
+        "summary": "Obtener tweets de un usuario específico",
+        "description": "Retorna una lista de tweets publicados por un usuario específico",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "description": "ID del usuario",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de tweets del usuario",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Tweet"
+              }
+            }
+          },
+          "404": {
+            "description": "Usuario no encontrado"
+          }
+        }
+      }
+    },
+    "/timeline": {
+      "get": {
+        "summary": "Obtener el timeline del usuario autenticado",
+        "description": "Retorna una lista de tweets publicados por los usuarios que sigue el usuario autenticado",
+        "security": [
+          {
+            "UserID": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Timeline del usuario",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Tweet"
+              }
+            }
+          },
+          "401": {
+            "description": "Usuario no autenticado"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "User": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID único del usuario"
+        },
+        "username": {
+          "type": "string",
+          "description": "Nombre de usuario"
+        },
+        "email": {
+          "type": "string",
+          "description": "Correo electrónico del usuario"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Fecha de creación del usuario"
+        },
+        "followers_count": {
+          "type": "integer",
+          "description": "Número de seguidores"
+        },
+        "following_count": {
+          "type": "integer",
+          "description": "Número de usuarios seguidos"
+        }
+      }
+    },
+    "UserInput": {
+      "type": "object",
+      "required": ["username", "email"],
+      "properties": {
+        "username": {
+          "type": "string",
+          "description": "Nombre de usuario"
+        },
+        "email": {
+          "type": "string",
+          "description": "Correo electrónico del usuario"
+        }
+      }
+    },
+    "Tweet": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID único del tweet"
+        },
+        "user_id": {
+          "type": "string",
+          "description": "ID del usuario que publicó el tweet"
+        },
+        "content": {
+          "type": "string",
+          "description": "Contenido del tweet"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Fecha de creación del tweet"
+        }
+      }
+    },
+    "TweetInput": {
+      "type": "object",
+      "required": ["content"],
+      "properties": {
+        "content": {
+          "type": "string",
+          "description": "Contenido del tweet (máximo 280 caracteres)"
+        }
+      }
+    },
+    "FollowInput": {
+      "type": "object",
+      "required": ["follow_id"],
+      "properties": {
+        "follow_id": {
+          "type": "string",
+          "description": "ID del usuario a seguir o dejar de seguir"
+        }
+      }
+    }
+  }
+}

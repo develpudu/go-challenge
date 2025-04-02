@@ -52,9 +52,14 @@ La aplicación está optimizada para lecturas:
 │   └── repository/        # Interfaces de repositorio
 ├── infrastructure/        # Capa de infraestructura
 │   ├── api/               # API REST
-│   │   └── handler/       # Controladores
+│   │   ├── handler/       # Controladores
 │   └── repository/        # Implementaciones de repositorio
 │       └── memory/        # Repositorios en memoria
+├── integration/           # Pruebas de integración
+│   └── api_test.go        # Tests de la API
+├── scripts/               # Scripts de utilidad
+│   └── tests.sh           # Script para ejecutar pruebas
+├── docs/                  # Documentación de la API
 ├── business.txt           # Assumptions
 ├── TODO.md                # Lista de tareas pendientes y mejoras futuras
 └── README.md              # Documentación
@@ -76,10 +81,20 @@ cd go-challenge
 2. Ejecutar la aplicación:
 
 ```bash
-go run main.go
+go run cmd/main.go
 ```
 
 La aplicación estará disponible en http://localhost:8080
+
+## Pruebas
+
+Para ejecutar todas las pruebas del proyecto, utilice el script proporcionado:
+
+```bash
+./scripts/tests.sh
+```
+
+Las pruebas de integración verifican el funcionamiento correcto de la API REST, incluyendo la creación de usuarios, publicación de tweets, seguimiento de usuarios y obtención de timelines.
 
 ## API REST
 
@@ -88,20 +103,24 @@ La aplicación estará disponible en http://localhost:8080
 - `POST /users` - Crear un nuevo usuario
 - `GET /users` - Obtener todos los usuarios
 - `GET /users/{id}` - Obtener un usuario específico
-- `POST /users/follow` - Seguir a un usuario
-- `POST /users/unfollow` - Dejar de seguir a un usuario
+- `POST /users/follow` - Seguir a un usuario (requiere User-ID en header y followed_id en body)
+- `POST /users/unfollow` - Dejar de seguir a un usuario (requiere User-ID en header y followed_id en body)
 
 ### Tweets
 
-- `POST /tweets` - Crear un nuevo tweet
+- `POST /tweets` - Crear un nuevo tweet (requiere User-ID en header)
 - `GET /tweets` - Obtener todos los tweets
 - `GET /tweets/{id}` - Obtener un tweet específico
-- `GET /users/tweets?user_id={id}` - Obtener tweets de un usuario específico
+- `GET /users/tweets` - Obtener tweets de un usuario específico (requiere User-ID en header)
+- `GET /timeline` - Obtener timeline de un usuario (requiere User-ID en header)
 - `GET /timeline` - Obtener el timeline del usuario autenticado
 
 ## Autenticación
 
 Para simplificar, la aplicación utiliza un encabezado `User-ID` para identificar al usuario que realiza la petición.
 
-## Documentación
+### Documentación de la API
+
 La documentación esta en español latinoamericano, mientras que el código esta documentado en inglés.
+
+- El archivo `docs/swagger.json` contiene la especificación OpenAPI/Swagger de la API.
