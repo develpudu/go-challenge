@@ -1,0 +1,29 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../:/app
+    environment:
+      - ENV=development
+    restart: unless-stopped
+    networks:
+      - app-network
+      
+  swagger-ui:
+    image: swaggerapi/swagger-ui
+    ports:
+      - "8081:8080"
+    volumes:
+      - ../docs/:/tmp
+    environment:
+      - SWAGGER_JSON=/tmp/swagger.json
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

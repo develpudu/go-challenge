@@ -36,11 +36,11 @@
 
 ## Despliegue
 ### Dockerización
-- [ ] Crear Dockerfile para la aplicación
-- [ ] Configurar Docker Compose para desarrollo local
-- [ ] Implementar estrategias de optimización de imágenes Docker
-- [ ] Crear scripts de automatización para build y deploy
-- [ ] Documentar proceso de despliegue con Docker
+- [x] Crear Dockerfile para la aplicación
+- [x] Configurar Docker Compose para desarrollo local
+- [x] Implementar estrategias de optimización de imágenes Docker
+- [x] Crear scripts de automatización para build y deploy
+- [x] Documentar proceso de despliegue con Docker
 
 ### Serverless (AWS)
 - [ ] Configurar AWS Lambda para la aplicación

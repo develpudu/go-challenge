@@ -2,13 +2,20 @@
 
 # Script para ejecutar todos los tests del proyecto
 
-echo "Ejecutando tests unitarios de la capa de dominio..."
+# Colores para mejorar la legibilidad
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+echo -e "${BLUE}Ejecutando tests unitarios de la capa de dominio...${NC}"
 go test -v ./domain/entity/...
 
-echo "\nEjecutando tests unitarios de la capa de aplicación..."
+echo -e "\n${BLUE}Ejecutando tests unitarios de la capa de aplicación...${NC}"
 go test -v ./application/usecase/...
 
-echo "\nEjecutando tests de integración..."
+echo -e "\n${BLUE}Ejecutando tests de integración...${NC}"
 go test -v ./integration/...
 
-echo "\nTodos los tests completados."
+echo -e "\n${GREEN}Todos los tests completados.${NC}"

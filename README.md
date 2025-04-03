@@ -50,6 +50,9 @@ La aplicación está optimizada para lecturas:
 ├── domain/                # Capa de dominio
 │   ├── entity/            # Entidades
 │   └── repository/        # Interfaces de repositorio
+├── docker/                # Archivos de configuración de Docker
+│   ├── Dockerfile         # Configuración para construir la imagen
+│   └── docker-compose.yml # Configuración para desarrollo local
 ├── infrastructure/        # Capa de infraestructura
 │   ├── api/               # API REST
 │   │   ├── handler/       # Controladores
@@ -68,8 +71,11 @@ La aplicación está optimizada para lecturas:
 ## Requisitos
 
 - Go 1.16 o superior
+- Docker y Docker Compose (opcional, para ejecución con contenedores)
 
 ## Instalación
+
+### Método 1: Ejecución local
 
 1. Clonar el repositorio:
 
@@ -84,7 +90,82 @@ cd go-challenge
 go run cmd/main.go
 ```
 
+### Método 2: Ejecución con Docker
+
+1. Clonar el repositorio:
+
+```bash
+git clone https://github.com/develpudu/go-challenge.git
+cd go-challenge
+```
+
+2. Ejecutar el script de automatización:
+
+```bash
+./scripts/automation.sh start
+```
+
+Este script se encargará de construir la imagen Docker y levantar todos los servicios necesarios automáticamente.
+
 La aplicación estará disponible en http://localhost:8080
+
+Para verificar el estado de los servicios, puede ejecutar:
+
+```bash
+./scripts/automation.sh status
+```
+
+## Scripts de Automatización
+
+El proyecto incluye varios scripts para facilitar el desarrollo, despliegue y monitorización de la aplicación:
+
+### Script de Automatización General
+
+```bash
+./scripts/automation.sh [comando]
+```
+
+Comandos disponibles:
+- `build` - Construye la imagen Docker de la aplicación
+- `start` - Inicia los servicios con Docker Compose
+- `stop` - Detiene los servicios
+- `restart` - Reinicia los servicios
+- `logs` - Muestra los logs de los servicios
+- `test` - Ejecuta todas las pruebas
+- `test:unit` - Ejecuta solo pruebas unitarias
+- `test:int` - Ejecuta solo pruebas de integración
+- `clean` - Limpia recursos no utilizados (imágenes, volúmenes)
+- `status` - Muestra el estado de los servicios
+- `help` - Muestra la ayuda del script
+
+### Script de Despliegue
+
+```bash
+./scripts/deploy.sh [entorno] [opciones]
+```
+
+Entornos disponibles:
+- `dev` - Entorno de desarrollo
+- `staging` - Entorno de pruebas
+- `prod` - Entorno de producción
+
+Opciones:
+- `--build` - Reconstruir la imagen antes del despliegue
+- `--force` - Forzar el despliegue incluso si hay pruebas fallidas
+
+### Script de Monitorización
+
+```bash
+./scripts/monitor.sh [comando]
+```
+
+Comandos disponibles:
+- `status` - Muestra el estado actual de la aplicación
+- `resources` - Muestra el uso de recursos de los contenedores
+- `logs` - Muestra los logs recientes de la aplicación
+- `health` - Realiza una verificación de salud de la aplicación
+- `report` - Genera un informe completo del estado del sistema
+
 
 ## Pruebas
 
