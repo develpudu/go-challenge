@@ -7,39 +7,34 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/develpudu/go-challenge/application/usecase"
 	"github.com/develpudu/go-challenge/domain/entity"
 	"github.com/develpudu/go-challenge/infrastructure/api/handler"
 	"github.com/develpudu/go-challenge/infrastructure/repository/memory"
-	"github.com/gorilla/mux"
 )
 
 // Returns a test API server
-func setupTestAPI(t *testing.T) (*mux.Router, *memory.UserRepository, *memory.TweetRepository) {
+func setupTestAPI(t *testing.T) (http.Handler, *memory.UserRepository, *memory.TweetRepository) {
+	// Reset DefaultServeMux for each test
+	http.DefaultServeMux = new(http.ServeMux)
+
 	// Initialize in-memory repositories
 	userRepo := memory.NewUserRepository()
 	tweetRepo := memory.NewTweetRepository(userRepo)
 
-	// Create router
-	router := mux.NewRouter()
+	// Initialize use cases
+	userUseCase := usecase.NewUserUseCase(userRepo)
+	tweetUseCase := usecase.NewTweetUseCase(tweetRepo, userRepo)
 
 	// Initialize handlers
-	userHandler := handler.NewUserHandler(userRepo, tweetRepo)
-	tweetHandler := handler.NewTweetHandler(tweetRepo, userRepo)
+	userHandler := handler.NewUserHandler(userUseCase)
+	tweetHandler := handler.NewTweetHandler(tweetUseCase)
 
 	// Register routes
-	router.HandleFunc("/users", userHandler.CreateUser).Methods("POST")
-	router.HandleFunc("/users/{id}", userHandler.GetUser).Methods("GET")
-	router.HandleFunc("/users/{id}/follow/{followID}", userHandler.FollowUser).Methods("POST")
-	router.HandleFunc("/users/{id}/unfollow/{followID}", userHandler.UnfollowUser).Methods("POST")
-	router.HandleFunc("/users/{id}/followers", userHandler.GetFollowers).Methods("GET")
-	router.HandleFunc("/users/{id}/following", userHandler.GetFollowing).Methods("GET")
+	userHandler.RegisterRoutes()
+	tweetHandler.RegisterRoutes()
 
-	router.HandleFunc("/tweets", tweetHandler.CreateTweet).Methods("POST")
-	router.HandleFunc("/tweets/{id}", tweetHandler.GetTweet).Methods("GET")
-	router.HandleFunc("/users/{id}/tweets", tweetHandler.GetTweetsByUser).Methods("GET")
-	router.HandleFunc("/users/{id}/timeline", tweetHandler.GetTimeline).Methods("GET")
-
-	return router, userRepo, tweetRepo
+	return http.DefaultServeMux, userRepo, tweetRepo
 }
 
 func TestCreateAndGetUser(t *testing.T) {
@@ -99,13 +94,14 @@ func TestCreateAndGetTweet(t *testing.T) {
 
 	// Create a tweet
 	tweetPayload := map[string]string{
-		"user_id": user.ID,
 		"content": "This is a test tweet",
 	}
 	tweetJSON, _ := json.Marshal(tweetPayload)
 
 	req, _ := http.NewRequest("POST", "/tweets", bytes.NewBuffer(tweetJSON))
 	req.Header.Set("Content-Type", "application/json")
+	// Set User-ID header as required by the handler
+	req.Header.Set("User-ID", user.ID)
 
 	rr := httptest.NewRecorder()
 	router.ServeHTTP(rr, req)
@@ -162,7 +158,11 @@ func TestFollowUserAndGetTimeline(t *testing.T) {
 	tweetRepo.Save(tweet)
 
 	// Make follower follow followed
-	req, _ := http.NewRequest("POST", "/users/"+follower.ID+"/follow/"+followed.ID, nil)
+	followPayload := map[string]string{"followed_id": followed.ID}
+	followJSON, _ := json.Marshal(followPayload)
+	req, _ := http.NewRequest("POST", "/users/follow", bytes.NewBuffer(followJSON))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-ID", follower.ID)
 	rr := httptest.NewRecorder()
 	router.ServeHTTP(rr, req)
 
@@ -172,7 +172,8 @@ func TestFollowUserAndGetTimeline(t *testing.T) {
 	}
 
 	// Get follower's timeline
-	req, _ = http.NewRequest("GET", "/users/"+follower.ID+"/timeline", nil)
+	req, _ = http.NewRequest("GET", "/timeline", nil)
+	req.Header.Set("User-ID", follower.ID)
 	rr = httptest.NewRecorder()
 	router.ServeHTTP(rr, req)
 
