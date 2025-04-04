@@ -1,20 +1,26 @@
 package usecase
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/develpudu/go-challenge/domain/entity"
 	"github.com/develpudu/go-challenge/domain/repository"
+	"github.com/develpudu/go-challenge/infrastructure/cache"
 	"github.com/google/uuid"
 )
 
 // Implements the user use cases
 type UserUseCase struct {
 	userRepository repository.UserRepository
+	timelineCache  cache.TimelineCache
 }
 
 // Creates a new user use case
-func NewUserUseCase(userRepository repository.UserRepository) *UserUseCase {
+func NewUserUseCase(userRepository repository.UserRepository, timelineCache cache.TimelineCache) *UserUseCase {
 	return &UserUseCase{
 		userRepository: userRepository,
+		timelineCache:  timelineCache,
 	}
 }
 
@@ -50,6 +56,7 @@ func (uc *UserUseCase) GetUser(userID string) (*entity.User, error) {
 
 // Makes a user follow another user
 func (uc *UserUseCase) FollowUser(followerID, followedID string) error {
+	ctx := context.Background()
 	// Check if both users exist
 	follower, err := uc.userRepository.FindByID(followerID)
 	if err != nil {
@@ -74,11 +81,25 @@ func (uc *UserUseCase) FollowUser(followerID, followedID string) error {
 	}
 
 	// Update follower in repository
-	return uc.userRepository.Update(follower)
+	if err := uc.userRepository.Update(follower); err != nil {
+		return fmt.Errorf("failed to update follower %s after follow: %w", followerID, err)
+	}
+
+	// Invalidate follower's timeline cache
+	if uc.timelineCache != nil {
+		if err := uc.timelineCache.InvalidateTimeline(ctx, followerID); err != nil {
+			fmt.Printf("WARN: Failed to invalidate timeline cache for follower %s after follow: %v\n", followerID, err)
+		}
+	} else {
+		fmt.Println("WARN: Timeline cache is nil in UserUseCase, skipping invalidation.")
+	}
+
+	return nil
 }
 
 // Makes a user unfollow another user
 func (uc *UserUseCase) UnfollowUser(followerID, followedID string) error {
+	ctx := context.Background()
 	// Check if follower exists
 	follower, err := uc.userRepository.FindByID(followerID)
 	if err != nil {
@@ -92,7 +113,20 @@ func (uc *UserUseCase) UnfollowUser(followerID, followedID string) error {
 	follower.Unfollow(followedID)
 
 	// Update follower in repository
-	return uc.userRepository.Update(follower)
+	if err := uc.userRepository.Update(follower); err != nil {
+		return fmt.Errorf("failed to update follower %s after unfollow: %w", followerID, err)
+	}
+
+	// Invalidate follower's timeline cache
+	if uc.timelineCache != nil {
+		if err := uc.timelineCache.InvalidateTimeline(ctx, followerID); err != nil {
+			fmt.Printf("WARN: Failed to invalidate timeline cache for follower %s after unfollow: %v\n", followerID, err)
+		}
+	} else {
+		fmt.Println("WARN: Timeline cache is nil in UserUseCase, skipping invalidation.")
+	}
+
+	return nil
 }
 
 // Retrieves all users that follow a specific user

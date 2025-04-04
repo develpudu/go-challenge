@@ -43,11 +43,11 @@
 - [x] Documentar proceso de despliegue con Docker
 
 ### Serverless (AWS)
-- [ ] Configurar AWS Lambda para la aplicación
-- [ ] Implementar API Gateway para exponer endpoints
-- [ ] Configurar DynamoDB para almacenamiento persistente
-- [ ] Implementar ElastiCache para optimización de lecturas
+- [x] Configurar AWS Lambda para la aplicación
+- [x] Implementar API Gateway para exponer endpoints
+- [x] Configurar DynamoDB para almacenamiento persistente
+- [x] Implementar ElastiCache para optimización de lecturas
 - [ ] Configurar CloudWatch para monitoreo y logs
-- [ ] Crear plantillas de CloudFormation/SAM para infraestructura
-- [ ] Implementar estrategia de despliegue continuo (CI/CD)
-- [ ] Documentar arquitectura serverless
+- [x] Crear plantillas de CloudFormation/SAM para infraestructura
+- [x] Implementar estrategia de despliegue continuo (CI/CD)
+- [X] Documentar arquitectura serverless
