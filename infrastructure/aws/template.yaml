@@ -1,0 +1,130 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  microblog-platform
+
+  SAM template for the Go Microblogging Platform API
+
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 128
+    Runtime: go1.x # Adjust if using a newer Go version compatible with provided.al2
+    Architectures:
+      - x86_64 # Or arm64 depending on your build
+    # Environment variables are now set via command-line arg in main.go, but could be set here if needed.
+    # Environment:
+    #   Variables:
+    #     USERS_TABLE_NAME: !Ref UsersTable
+    #     TWEETS_TABLE_NAME: !Ref TweetsTable
+    #     REDIS_ENDPOINT: <Set this manually or via Parameter/Terraform output>
+
+Parameters:
+  RedisEndpointAddress: # Parameter to pass the Redis endpoint from Terraform/Manual entry
+    Type: String
+    Description: "The endpoint address for the ElastiCache Redis instance."
+  RedisEndpointPort:
+    Type: String
+    Description: "The port number for the ElastiCache Redis instance."
+    Default: "6379"
+
+Resources:
+  MicroblogApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../../ # Points to the root directory where `go build` outputs the binary
+      Handler: main aws # The compiled executable name
+      # The Lambda function needs access to the VPC to connect to ElastiCache
+      VpcConfig:
+        # Replace with your specific Security Group IDs and Subnet IDs
+        # SecurityGroupIds:
+        #   - sg-xxxxxxxxxxxxxxxxx
+        # SubnetIds:
+        #   - subnet-xxxxxxxxxxxxxxxxx
+        #   - subnet-yyyyyyyyyyyyyyyyy
+        SecurityGroupIds: [] # Placeholder - MUST BE CONFIGURED
+        SubnetIds: []      # Placeholder - MUST BE CONFIGURED
+      Environment:
+        Variables:
+          # Pass the ElastiCache endpoint to the function
+          REDIS_ENDPOINT: !Sub "${RedisEndpointAddress}:${RedisEndpointPort}"
+          # Add other env vars if needed
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TweetsTable
+        # Add policy to allow querying the GSI
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Query
+              Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${TweetsTable}/index/UserIDIndex"
+        # Add VPC access execution role if using VPC config
+        - AWSLambdaVPCAccessExecutionRole
+
+      Events:
+        CatchAll:
+          Type: HttpApi # Using HTTP API (API Gateway v2) - cheaper and faster
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+            # Optional: Configure CORS if needed
+            # ApiGatewayManagedOverrides:
+            #   CorsConfiguration:
+            #     AllowOrigins:
+            #       - '*' # Restrict in production
+            #     AllowMethods:
+            #       - GET
+            #       - POST
+            #       - OPTIONS
+            #     AllowHeaders:
+            #       - Content-Type
+            #       - User-ID # Your custom header
+
+  UsersTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName: users # Hardcoded name as per previous change
+      PrimaryKey:
+        Name: ID
+        Type: String
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1 # Use OnDemand or adjust as needed
+        WriteCapacityUnits: 1
+      # SSESpecification:
+      #   SSEEnabled: true # Optional: Enable encryption at rest
+
+  TweetsTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName: tweets # Hardcoded name as per previous change
+      PrimaryKey:
+        Name: ID
+        Type: String
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1 # Use OnDemand or adjust as needed
+        WriteCapacityUnits: 1
+      # SSESpecification:
+      #   SSEEnabled: true # Optional: Enable encryption at rest
+      GlobalSecondaryIndexes:
+        - IndexName: UserIDIndex # GSI for querying tweets by user
+          KeySchema:
+            - AttributeName: UserID
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL # Project all attributes to the GSI
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1 # Use OnDemand or adjust as needed
+            WriteCapacityUnits: 1
+
+Outputs:
+  MicroblogApiEndpoint:
+    Description: "API Gateway endpoint URL for Prod stage for Microblog function"
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+  MicroblogApiFunctionArn:
+    Description: "Microblog API Lambda Function ARN"
+    Value: !GetAtt MicroblogApiFunction.Arn
+  MicroblogApiFunctionIamRole:
+    Description: "Implicit IAM Role created for Microblog API function"
+    Value: !GetAtt MicroblogApiFunctionRole.Arn # Note: Role name might differ slightly based on SAM generation 

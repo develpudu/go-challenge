@@ -23,7 +23,8 @@ func setupTestAPI(t *testing.T) (http.Handler, *memory.UserRepository, *memory.T
 	tweetRepo := memory.NewTweetRepository(userRepo)
 
 	// Initialize use cases
-	userUseCase := usecase.NewUserUseCase(userRepo)
+	// Pass nil for TimelineCache as it's not used in memory-based integration tests
+	userUseCase := usecase.NewUserUseCase(userRepo, nil)
 	tweetUseCase := usecase.NewTweetUseCase(tweetRepo, userRepo)
 
 	// Initialize handlers

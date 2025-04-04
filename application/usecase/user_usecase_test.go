@@ -1,10 +1,12 @@
 package usecase_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/develpudu/go-challenge/application/usecase"
 	"github.com/develpudu/go-challenge/domain/entity"
+	"github.com/develpudu/go-challenge/infrastructure/cache"
 )
 
 // Mock implementation of the UserRepository interface
@@ -83,10 +85,27 @@ func (r *MockUserRepository) FindFollowing(userID string) ([]*entity.User, error
 	return following, nil
 }
 
+// Mock implementation of TimelineCache interface
+type MockTimelineCache struct{}
+
+func (m *MockTimelineCache) GetTimeline(ctx context.Context, userID string) ([]*entity.Tweet, bool, error) {
+	return nil, false, nil // Always cache miss
+}
+func (m *MockTimelineCache) SetTimeline(ctx context.Context, userID string, timeline []*entity.Tweet) error {
+	return nil // Do nothing
+}
+func (m *MockTimelineCache) InvalidateTimeline(ctx context.Context, userID string) error {
+	return nil // Do nothing
+}
+
+// Compile-time check
+var _ cache.TimelineCache = (*MockTimelineCache)(nil)
+
 func TestCreateUser(t *testing.T) {
 	// Arrange
 	repo := NewMockUserRepository()
-	useCase := usecase.NewUserUseCase(repo)
+	cache := &MockTimelineCache{}                  // Use mock cache
+	useCase := usecase.NewUserUseCase(repo, cache) // Pass cache
 	username := "testuser"
 
 	// Act
@@ -119,7 +138,8 @@ func TestCreateUser(t *testing.T) {
 func TestGetUser(t *testing.T) {
 	// Arrange
 	repo := NewMockUserRepository()
-	useCase := usecase.NewUserUseCase(repo)
+	cache := &MockTimelineCache{}                  // Use mock cache
+	useCase := usecase.NewUserUseCase(repo, cache) // Pass cache
 
 	// Create a user to retrieve
 	user := entity.NewUser("user123", "testuser")
@@ -149,7 +169,8 @@ func TestGetUser(t *testing.T) {
 func TestGetUserNotFound(t *testing.T) {
 	// Arrange
 	repo := NewMockUserRepository()
-	useCase := usecase.NewUserUseCase(repo)
+	cache := &MockTimelineCache{}                  // Use mock cache
+	useCase := usecase.NewUserUseCase(repo, cache) // Pass cache
 
 	// Act
 	_, err := useCase.GetUser("nonexistent")
@@ -163,7 +184,8 @@ func TestGetUserNotFound(t *testing.T) {
 func TestFollowUser(t *testing.T) {
 	// Arrange
 	repo := NewMockUserRepository()
-	useCase := usecase.NewUserUseCase(repo)
+	cache := &MockTimelineCache{}                  // Use mock cache
+	useCase := usecase.NewUserUseCase(repo, cache) // Pass cache
 
 	// Create two users
 	follower := entity.NewUser("follower", "followerUser")
@@ -190,7 +212,8 @@ func TestFollowUser(t *testing.T) {
 func TestFollowUserSelf(t *testing.T) {
 	// Arrange
 	repo := NewMockUserRepository()
-	useCase := usecase.NewUserUseCase(repo)
+	cache := &MockTimelineCache{}                  // Use mock cache
+	useCase := usecase.NewUserUseCase(repo, cache) // Pass cache
 
 	// Create a user
 	user := entity.NewUser("user123", "testuser")
@@ -208,7 +231,8 @@ func TestFollowUserSelf(t *testing.T) {
 func TestUnfollowUser(t *testing.T) {
 	// Arrange
 	repo := NewMockUserRepository()
-	useCase := usecase.NewUserUseCase(repo)
+	cache := &MockTimelineCache{}                  // Use mock cache
+	useCase := usecase.NewUserUseCase(repo, cache) // Pass cache
 
 	// Create two users
 	follower := entity.NewUser("follower", "followerUser")
@@ -238,7 +262,8 @@ func TestUnfollowUser(t *testing.T) {
 func TestGetFollowers(t *testing.T) {
 	// Arrange
 	repo := NewMockUserRepository()
-	useCase := usecase.NewUserUseCase(repo)
+	cache := &MockTimelineCache{}                  // Use mock cache
+	useCase := usecase.NewUserUseCase(repo, cache) // Pass cache
 
 	// Create users
 	user := entity.NewUser("user", "mainUser")
@@ -290,7 +315,8 @@ func TestGetFollowers(t *testing.T) {
 func TestGetFollowing(t *testing.T) {
 	// Arrange
 	repo := NewMockUserRepository()
-	useCase := usecase.NewUserUseCase(repo)
+	cache := &MockTimelineCache{}                  // Use mock cache
+	useCase := usecase.NewUserUseCase(repo, cache) // Pass cache
 
 	// Create users
 	user := entity.NewUser("user", "mainUser")

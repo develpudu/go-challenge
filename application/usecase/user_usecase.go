@@ -1,20 +1,27 @@
 package usecase
 
 import (
+	"context"
+	"fmt"
+	"log/slog"
+
 	"github.com/develpudu/go-challenge/domain/entity"
 	"github.com/develpudu/go-challenge/domain/repository"
+	"github.com/develpudu/go-challenge/infrastructure/cache"
 	"github.com/google/uuid"
 )
 
 // Implements the user use cases
 type UserUseCase struct {
 	userRepository repository.UserRepository
+	timelineCache  cache.TimelineCache
 }
 
 // Creates a new user use case
-func NewUserUseCase(userRepository repository.UserRepository) *UserUseCase {
+func NewUserUseCase(userRepository repository.UserRepository, timelineCache cache.TimelineCache) *UserUseCase {
 	return &UserUseCase{
 		userRepository: userRepository,
+		timelineCache:  timelineCache,
 	}
 }
 
@@ -50,6 +57,7 @@ func (uc *UserUseCase) GetUser(userID string) (*entity.User, error) {
 
 // Makes a user follow another user
 func (uc *UserUseCase) FollowUser(followerID, followedID string) error {
+	ctx := context.Background()
 	// Check if both users exist
 	follower, err := uc.userRepository.FindByID(followerID)
 	if err != nil {
@@ -74,11 +82,29 @@ func (uc *UserUseCase) FollowUser(followerID, followedID string) error {
 	}
 
 	// Update follower in repository
-	return uc.userRepository.Update(follower)
+	if err := uc.userRepository.Update(follower); err != nil {
+		slog.ErrorContext(ctx, "Failed to update follower repository after follow", "followerID", followerID, "followedID", followedID, "error", err)
+		return fmt.Errorf("failed to update follower %s after follow: %w", followerID, err)
+	}
+	slog.InfoContext(ctx, "User followed another user", "followerID", followerID, "followedID", followedID)
+
+	// Invalidate follower's timeline cache
+	if uc.timelineCache != nil {
+		if err := uc.timelineCache.InvalidateTimeline(ctx, followerID); err != nil {
+			// Use structured logging for the warning
+			slog.WarnContext(ctx, "Failed to invalidate timeline cache after follow", "followerID", followerID, "followedID", followedID, "error", err)
+		}
+	} else {
+		// Use structured logging for the warning
+		slog.WarnContext(ctx, "Timeline cache is nil in UserUseCase, skipping invalidation on FollowUser")
+	}
+
+	return nil
 }
 
 // Makes a user unfollow another user
 func (uc *UserUseCase) UnfollowUser(followerID, followedID string) error {
+	ctx := context.Background()
 	// Check if follower exists
 	follower, err := uc.userRepository.FindByID(followerID)
 	if err != nil {
@@ -92,7 +118,24 @@ func (uc *UserUseCase) UnfollowUser(followerID, followedID string) error {
 	follower.Unfollow(followedID)
 
 	// Update follower in repository
-	return uc.userRepository.Update(follower)
+	if err := uc.userRepository.Update(follower); err != nil {
+		slog.ErrorContext(ctx, "Failed to update follower repository after unfollow", "followerID", followerID, "followedID", followedID, "error", err)
+		return fmt.Errorf("failed to update follower %s after unfollow: %w", followerID, err)
+	}
+	slog.InfoContext(ctx, "User unfollowed another user", "followerID", followerID, "followedID", followedID)
+
+	// Invalidate follower's timeline cache
+	if uc.timelineCache != nil {
+		if err := uc.timelineCache.InvalidateTimeline(ctx, followerID); err != nil {
+			// Use structured logging for the warning
+			slog.WarnContext(ctx, "Failed to invalidate timeline cache after unfollow", "followerID", followerID, "followedID", followedID, "error", err)
+		}
+	} else {
+		// Use structured logging for the warning
+		slog.WarnContext(ctx, "Timeline cache is nil in UserUseCase, skipping invalidation on UnfollowUser")
+	}
+
+	return nil
 }
 
 // Retrieves all users that follow a specific user
