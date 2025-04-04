@@ -33,7 +33,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: ../../ # Points to the root directory where `go build` outputs the binary
-      Handler: main # The compiled executable name
+      Handler: main aws # The compiled executable name
       # The Lambda function needs access to the VPC to connect to ElastiCache
       VpcConfig:
         # Replace with your specific Security Group IDs and Subnet IDs

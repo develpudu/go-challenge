@@ -8,11 +8,21 @@ services:
     volumes:
       - ../:/app
     environment:
+      - REDIS_ENDPOINT=redis:6379
       - ENV=development
     restart: unless-stopped
+    depends_on:
+      - redis
     networks:
       - app-network
-      
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+
   swagger-ui:
     image: swaggerapi/swagger-ui
     ports:

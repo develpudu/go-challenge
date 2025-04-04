@@ -3,6 +3,7 @@ package dynamodb
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sort"
 	"sync"
 	"time"
@@ -95,21 +96,20 @@ func (r *DynamoDBTweetRepository) Save(tweet *entity.Tweet) error {
 
 	_, err = r.client.PutItem(ctx, input)
 	if err != nil {
+		slog.ErrorContext(ctx, "Failed to save tweet to DynamoDB", "tweetID", tweet.ID, "userID", tweet.UserID, "error", err)
 		return fmt.Errorf("failed to save tweet to DynamoDB: %w", err)
 	}
 
 	// Invalidate timeline cache for the author
 	if r.cache != nil {
 		if err := r.cache.InvalidateTimeline(ctx, tweet.UserID); err != nil {
-			// Log the invalidation error but don't fail the Save operation
-			fmt.Printf("WARN: Failed to invalidate timeline cache for user %s after saving tweet %s: %v\n", tweet.UserID, tweet.ID, err)
+			slog.WarnContext(ctx, "Failed to invalidate timeline cache after saving tweet", "userID", tweet.UserID, "tweetID", tweet.ID, "error", err)
 		}
 	} else {
-		fmt.Println("WARN: Timeline cache is nil, skipping invalidation.")
+		slog.WarnContext(ctx, "Timeline cache is nil, skipping invalidation on Save")
 	}
 
 	// TODO: Implement more robust invalidation for followers' timelines
-	// This might involve fetching followers and invalidating each one, potentially asynchronously.
 
 	return nil
 }
@@ -160,29 +160,29 @@ func (r *DynamoDBTweetRepository) queryTweetsByUserIDWithContext(ctx context.Con
 
 	tweets := make([]*entity.Tweet, 0)
 	for paginator.HasMorePages() {
-		// Pass the context to NextPage
 		page, err := paginator.NextPage(ctx)
 		if err != nil {
+			slog.ErrorContext(ctx, "Failed to query tweets page from DynamoDB", "userID", userID, "error", err)
 			return nil, fmt.Errorf("failed to query tweets page for user %s: %w", userID, err)
 		}
 
 		var pageTweets []dynamoDBTweet
 		err = attributevalue.UnmarshalListOfMaps(page.Items, &pageTweets)
 		if err != nil {
+			slog.ErrorContext(ctx, "Failed to unmarshal tweets page from DynamoDB", "userID", userID, "error", err)
 			return nil, fmt.Errorf("failed to unmarshal tweets page for user %s: %w", userID, err)
 		}
 
 		for _, ddbTweet := range pageTweets {
 			entityTweet, err := fromDynamoDBTweet(&ddbTweet)
 			if err != nil {
-				// Log error but potentially continue?
-				fmt.Printf("WARN: Failed to convert tweet %s for user %s: %v\n", ddbTweet.ID, userID, err)
+				slog.WarnContext(ctx, "Failed to convert tweet from DynamoDB format during query", "tweetID", ddbTweet.ID, "userID", userID, "error", err)
 				continue
 			}
 			tweets = append(tweets, entityTweet)
 		}
 	}
-
+	slog.DebugContext(ctx, "Successfully queried tweets by user from DynamoDB", "userID", userID, "count", len(tweets))
 	return tweets, nil
 }
 
@@ -196,6 +196,7 @@ func (r *DynamoDBTweetRepository) FindByUserID(userID string) ([]*entity.Tweet, 
 // FindAll retrieves all tweets from DynamoDB.
 // WARNING: This uses Scan, which is inefficient for large tables. Consider alternatives in production.
 func (r *DynamoDBTweetRepository) FindAll() ([]*entity.Tweet, error) {
+	ctx := context.Background() // Use background context
 	input := &dynamodb.ScanInput{
 		TableName: aws.String(r.tableName),
 	}
@@ -204,27 +205,29 @@ func (r *DynamoDBTweetRepository) FindAll() ([]*entity.Tweet, error) {
 
 	tweets := make([]*entity.Tweet, 0)
 	for paginator.HasMorePages() {
-		page, err := paginator.NextPage(context.TODO())
+		page, err := paginator.NextPage(ctx) // Pass context
 		if err != nil {
+			slog.ErrorContext(ctx, "Failed to scan tweets page from DynamoDB", "error", err)
 			return nil, fmt.Errorf("failed to scan tweets page: %w", err)
 		}
 
 		var pageTweets []dynamoDBTweet
 		err = attributevalue.UnmarshalListOfMaps(page.Items, &pageTweets)
 		if err != nil {
+			slog.ErrorContext(ctx, "Failed to unmarshal scanned tweets page from DynamoDB", "error", err)
 			return nil, fmt.Errorf("failed to unmarshal scanned tweets page: %w", err)
 		}
 
 		for _, ddbTweet := range pageTweets {
 			entityTweet, err := fromDynamoDBTweet(&ddbTweet)
 			if err != nil {
-				fmt.Printf("WARN: Failed to convert scanned tweet %s: %v\n", ddbTweet.ID, err)
+				slog.WarnContext(ctx, "Failed to convert scanned tweet from DynamoDB format", "tweetID", ddbTweet.ID, "error", err)
 				continue
 			}
 			tweets = append(tweets, entityTweet)
 		}
 	}
-
+	slog.DebugContext(ctx, "Successfully scanned all tweets from DynamoDB", "count", len(tweets))
 	return tweets, nil
 }
 
@@ -256,16 +259,18 @@ func (r *DynamoDBTweetRepository) Delete(id string) error {
 
 	_, err = r.client.DeleteItem(ctx, input)
 	if err != nil {
+		slog.ErrorContext(ctx, "Failed to delete tweet from DynamoDB", "tweetID", id, "error", err)
 		return fmt.Errorf("failed to delete tweet %s from DynamoDB: %w", id, err)
 	}
+	slog.InfoContext(ctx, "Deleted tweet from DynamoDB", "tweetID", id, "authorID", authorID)
 
 	// Invalidate timeline cache for the author
 	if r.cache != nil {
 		if err := r.cache.InvalidateTimeline(ctx, authorID); err != nil {
-			fmt.Printf("WARN: Failed to invalidate timeline cache for user %s after deleting tweet %s: %v\n", authorID, id, err)
+			slog.WarnContext(ctx, "Failed to invalidate timeline cache after deleting tweet", "userID", authorID, "tweetID", id, "error", err)
 		}
 	} else {
-		fmt.Println("WARN: Timeline cache is nil, skipping invalidation.")
+		slog.WarnContext(ctx, "Timeline cache is nil, skipping invalidation on Delete")
 	}
 
 	// TODO: Implement more robust invalidation for followers' timelines
@@ -282,16 +287,13 @@ func (r *DynamoDBTweetRepository) GetTimeline(userID string) ([]*entity.Tweet, e
 	if r.cache != nil {
 		cachedTimeline, found, err := r.cache.GetTimeline(ctx, userID)
 		if err != nil {
-			// Log error but proceed to fetch from DB
-			fmt.Printf("WARN: Failed to get timeline for user %s from cache: %v\n", userID, err)
+			slog.WarnContext(ctx, "Failed to get timeline from cache, proceeding to DB", "userID", userID, "error", err)
 		}
 		if found {
-			fmt.Printf("Cache hit for timeline: %s\n", userID)
 			return cachedTimeline, nil
 		}
-		fmt.Printf("Cache miss for timeline: %s\n", userID)
 	} else {
-		fmt.Println("WARN: Timeline cache is nil, cannot check cache.")
+		slog.WarnContext(ctx, "Timeline cache is nil, cannot check cache for GetTimeline")
 	}
 
 	// 2. Cache miss or cache unavailable, fetch from DB (existing logic)
@@ -311,6 +313,8 @@ func (r *DynamoDBTweetRepository) GetTimeline(userID string) ([]*entity.Tweet, e
 	for followedID := range user.Following {
 		idsToFetch = append(idsToFetch, followedID)
 	}
+
+	slog.DebugContext(ctx, "Fetching timeline from DB", "userID", userID, "usersToQuery", len(idsToFetch))
 
 	var allTweets []*entity.Tweet
 	var mu sync.Mutex
@@ -332,18 +336,19 @@ func (r *DynamoDBTweetRepository) GetTimeline(userID string) ([]*entity.Tweet, e
 	}
 
 	if err := g.Wait(); err != nil {
+		slog.ErrorContext(ctx, "Failed fetching timeline from DB via errgroup", "userID", userID, "error", err)
 		return nil, err
 	}
 
 	sort.Slice(allTweets, func(i, j int) bool {
 		return allTweets[i].CreatedAt.After(allTweets[j].CreatedAt)
 	})
+	slog.DebugContext(ctx, "Successfully fetched timeline from DB", "userID", userID, "tweetCount", len(allTweets))
 
 	// 3. Store fetched result in cache
 	if r.cache != nil {
 		if err := r.cache.SetTimeline(ctx, userID, allTweets); err != nil {
-			// Log error but return the fetched data anyway
-			fmt.Printf("WARN: Failed to set timeline cache for user %s: %v\n", userID, err)
+			slog.WarnContext(ctx, "Failed to set timeline cache after DB fetch", "userID", userID, "error", err)
 		}
 	}
 

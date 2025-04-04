@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"time"
 
@@ -57,7 +58,8 @@ func NewRedisTimelineCache(ctx context.Context) (*RedisTimelineCache, error) {
 		return nil, fmt.Errorf("failed to connect to Redis at %s: %w", redisEndpoint, err)
 	}
 
-	fmt.Printf("Connected to Redis at %s\n", redisEndpoint)
+	// Use slog for info message
+	slog.InfoContext(ctx, "Connected to Redis", "endpoint", redisEndpoint)
 	return &RedisTimelineCache{
 		client: client,
 		ttl:    defaultTimelineTTL,
@@ -75,21 +77,25 @@ func (c *RedisTimelineCache) GetTimeline(ctx context.Context, userID string) ([]
 	val, err := c.client.Get(ctx, key).Result()
 
 	if err == redis.Nil {
+		slog.DebugContext(ctx, "Timeline cache miss", "userID", userID)
 		return nil, false, nil // Cache miss
 	}
 	if err != nil {
+		// Log the error but return it so the caller can potentially fetch from DB
+		slog.ErrorContext(ctx, "Failed to get timeline from Redis", "userID", userID, "error", err)
 		return nil, false, fmt.Errorf("failed to get timeline for user %s from Redis: %w", userID, err)
 	}
 
 	// Deserialize the timeline from JSON
 	var timeline []*entity.Tweet
 	if err := json.Unmarshal([]byte(val), &timeline); err != nil {
-		// Consider invalidating the key if unmarshalling fails?
-		fmt.Printf("WARN: Failed to unmarshal cached timeline for user %s: %v. Invalidating cache entry.", userID, err)
-		_ = c.InvalidateTimeline(ctx, userID) // Attempt to cleanup bad data
+		// Use slog for warning
+		slog.WarnContext(ctx, "Failed to unmarshal cached timeline, invalidating entry", "userID", userID, "error", err)
+		_ = c.InvalidateTimeline(ctx, userID)
 		return nil, false, fmt.Errorf("failed to unmarshal cached timeline for user %s: %w", userID, err)
 	}
 
+	slog.DebugContext(ctx, "Timeline cache hit", "userID", userID)
 	return timeline, true, nil // Cache hit
 }
 
@@ -100,13 +106,16 @@ func (c *RedisTimelineCache) SetTimeline(ctx context.Context, userID string, tim
 	// Serialize the timeline to JSON
 	val, err := json.Marshal(timeline)
 	if err != nil {
+		slog.ErrorContext(ctx, "Failed to marshal timeline for caching", "userID", userID, "error", err)
 		return fmt.Errorf("failed to marshal timeline for caching for user %s: %w", userID, err)
 	}
 
 	err = c.client.Set(ctx, key, val, c.ttl).Err()
 	if err != nil {
+		slog.ErrorContext(ctx, "Failed to set timeline cache in Redis", "userID", userID, "error", err)
 		return fmt.Errorf("failed to set timeline cache for user %s in Redis: %w", userID, err)
 	}
+	slog.DebugContext(ctx, "Successfully set timeline cache", "userID", userID, "ttl", c.ttl)
 	return nil
 }
 
@@ -115,8 +124,10 @@ func (c *RedisTimelineCache) InvalidateTimeline(ctx context.Context, userID stri
 	key := c.generateKey(userID)
 	err := c.client.Del(ctx, key).Err()
 	if err != nil && err != redis.Nil { // Ignore error if key didn't exist
+		slog.ErrorContext(ctx, "Failed to invalidate timeline cache in Redis", "userID", userID, "error", err)
 		return fmt.Errorf("failed to invalidate timeline cache for user %s in Redis: %w", userID, err)
 	}
+	slog.DebugContext(ctx, "Invalidated timeline cache", "userID", userID)
 	return nil
 }
 

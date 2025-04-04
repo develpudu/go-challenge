@@ -75,10 +75,25 @@ La aplicación está optimizada para lecturas del timeline mediante:
 
 ### Método 1: Ejecución local (Base de datos en memoria)
 
+Este modo es ideal para desarrollo y pruebas rápidas sin dependencias externas.
+
 1.  Clonar el repositorio: `git clone ...`
 2.  `cd go-challenge`
-3.  Ejecutar: `go run cmd/main.go`
+3.  Ejecutar (sin argumentos para usar repositorios en memoria):
+    ```bash
+    go run cmd/main.go
+    ```
     La API estará disponible en `http://localhost:8080`.
+
+**Simulación Local del Modo Lambda:**
+
+Es posible iniciar la aplicación localmente para que utilice la lógica de inicialización de AWS (DynamoDB, Redis) pasando el argumento `aws`. **Importante:** Esto requiere que las tablas DynamoDB (`users`, `tweets`) y la instancia Redis (definida por `REDIS_ENDPOINT` en el código/entorno) existan y sean accesibles desde tu máquina local (o que uses herramientas como DynamoDB Local y un Redis local).
+
+```bash
+# Asegúrate de que REDIS_ENDPOINT esté configurado si ejecutas así
+export REDIS_ENDPOINT="localhost:6379" # Ejemplo para Redis local
+go run cmd/main.go aws
+```
 
 ### Método 2: Ejecución con Docker (Base de datos en memoria)
 
@@ -104,14 +119,13 @@ Este método despliega la aplicación en AWS Lambda, API Gateway, DynamoDB y Ela
     *   Revisar y **modificar** `infrastructure/aws/template.yaml`, específicamente la sección `VpcConfig` de `MicroblogApiFunction` para que coincida con la configuración de tu VPC y los security groups permitan la conexión Lambda -> ElastiCache.
     *   Ejecutar el script de despliegue, proporcionando el entorno deseado (e.g., `dev`) y los datos del endpoint de Redis obtenidos de Terraform:
         ```bash
+        chmod +x scripts/deploy-serverless.sh
         ./scripts/deploy-serverless.sh <entorno> <redis_endpoint_address> [redis_endpoint_port]
         # Ejemplo:
         # ./scripts/deploy-serverless.sh dev my-redis-endpoint.xxxxx.cache.amazonaws.com
         ```
     *   El script compilará la aplicación, empaquetará el código y desplegará la stack de CloudFormation usando SAM.
     *   La salida del comando `sam deploy` incluirá el endpoint de la API Gateway.
-
-**Nota:** La aplicación en modo Lambda (`go run cmd/main.go aws`) espera que las tablas DynamoDB (`users`, `tweets`) y la instancia Redis (accesible via `REDIS_ENDPOINT`) existan y sean accesibles.
 
 ## Scripts
 
@@ -144,5 +158,6 @@ Para simplificar, la aplicación utiliza un encabezado `User-ID` para identifica
 ## Documentación Adicional
 
 - **Arquitectura Serverless**: Ver `docs/serverless-architecture.md`.
+- **Logging**: La aplicación utiliza el paquete estándar `log/slog` para el logging estructurado en formato JSON, ideal para el análisis en CloudWatch Logs.
 - **API Spec**: Ver `docs/swagger.json`.
 - **Decisiones/Asunciones**: Ver `business.txt`.

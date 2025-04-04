@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/develpudu/go-challenge/domain/entity"
 	"github.com/develpudu/go-challenge/domain/repository"
@@ -82,16 +83,20 @@ func (uc *UserUseCase) FollowUser(followerID, followedID string) error {
 
 	// Update follower in repository
 	if err := uc.userRepository.Update(follower); err != nil {
+		slog.ErrorContext(ctx, "Failed to update follower repository after follow", "followerID", followerID, "followedID", followedID, "error", err)
 		return fmt.Errorf("failed to update follower %s after follow: %w", followerID, err)
 	}
+	slog.InfoContext(ctx, "User followed another user", "followerID", followerID, "followedID", followedID)
 
 	// Invalidate follower's timeline cache
 	if uc.timelineCache != nil {
 		if err := uc.timelineCache.InvalidateTimeline(ctx, followerID); err != nil {
-			fmt.Printf("WARN: Failed to invalidate timeline cache for follower %s after follow: %v\n", followerID, err)
+			// Use structured logging for the warning
+			slog.WarnContext(ctx, "Failed to invalidate timeline cache after follow", "followerID", followerID, "followedID", followedID, "error", err)
 		}
 	} else {
-		fmt.Println("WARN: Timeline cache is nil in UserUseCase, skipping invalidation.")
+		// Use structured logging for the warning
+		slog.WarnContext(ctx, "Timeline cache is nil in UserUseCase, skipping invalidation on FollowUser")
 	}
 
 	return nil
@@ -114,16 +119,20 @@ func (uc *UserUseCase) UnfollowUser(followerID, followedID string) error {
 
 	// Update follower in repository
 	if err := uc.userRepository.Update(follower); err != nil {
+		slog.ErrorContext(ctx, "Failed to update follower repository after unfollow", "followerID", followerID, "followedID", followedID, "error", err)
 		return fmt.Errorf("failed to update follower %s after unfollow: %w", followerID, err)
 	}
+	slog.InfoContext(ctx, "User unfollowed another user", "followerID", followerID, "followedID", followedID)
 
 	// Invalidate follower's timeline cache
 	if uc.timelineCache != nil {
 		if err := uc.timelineCache.InvalidateTimeline(ctx, followerID); err != nil {
-			fmt.Printf("WARN: Failed to invalidate timeline cache for follower %s after unfollow: %v\n", followerID, err)
+			// Use structured logging for the warning
+			slog.WarnContext(ctx, "Failed to invalidate timeline cache after unfollow", "followerID", followerID, "followedID", followedID, "error", err)
 		}
 	} else {
-		fmt.Println("WARN: Timeline cache is nil in UserUseCase, skipping invalidation.")
+		// Use structured logging for the warning
+		slog.WarnContext(ctx, "Timeline cache is nil in UserUseCase, skipping invalidation on UnfollowUser")
 	}
 
 	return nil

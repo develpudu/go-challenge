@@ -47,7 +47,7 @@
 - [x] Implementar API Gateway para exponer endpoints
 - [x] Configurar DynamoDB para almacenamiento persistente
 - [x] Implementar ElastiCache para optimización de lecturas
-- [ ] Configurar CloudWatch para monitoreo y logs
+- [x] Configurar CloudWatch para monitoreo y logs
 - [x] Crear plantillas de CloudFormation/SAM para infraestructura
 - [x] Implementar estrategia de despliegue continuo (CI/CD)
 - [X] Documentar arquitectura serverless

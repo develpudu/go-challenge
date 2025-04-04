@@ -2,8 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -24,7 +23,15 @@ var httpAdapter *httpadapter.HandlerAdapter
 
 // Main function - Entry point of the application
 func main() {
-	fmt.Println("Starting Microblogging Platform...")
+	// Setup structured logging
+	logLevel := slog.LevelInfo // Default level
+	if os.Getenv("LOG_LEVEL") == "debug" {
+		logLevel = slog.LevelDebug
+	}
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
+	slog.SetDefault(logger) // Set as default logger
+
+	slog.Info("Starting Microblogging Platform...")
 
 	var userRepository repository.UserRepository
 	var tweetRepository repository.TweetRepository
@@ -35,30 +42,35 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "aws" {
 		runMode = "lambda"
 	}
+	slog.Info("Determined run mode", "mode", runMode)
 
 	if runMode == "lambda" {
-		fmt.Println("Initializing DynamoDB repositories and Redis cache...")
+		slog.Info("Initializing DynamoDB repositories and Redis cache...")
 		ctx := context.Background()
 
 		// Initialize Redis Cache
 		redisCache, err := cacheRepo.NewRedisTimelineCache(ctx)
 		if err != nil {
-			fmt.Printf("WARN: Failed to initialize Redis timeline cache: %v. Proceeding without cache.\n", err)
+			// Use structured logging for warnings
+			slog.Warn("Failed to initialize Redis timeline cache. Proceeding without cache.", "error", err)
 			timelineCache = nil
 		} else {
+			slog.Info("Redis timeline cache initialized.")
 			timelineCache = redisCache
 		}
 
 		// Load AWS configuration
 		cfg, err := config.LoadDefaultConfig(ctx)
 		if err != nil {
-			log.Fatalf("unable to load AWS SDK config, %v", err)
+			// Use Fatalf equivalent with slog: log error then exit
+			slog.Error("unable to load AWS SDK config", "error", err)
+			os.Exit(1)
 		}
 
 		// Use hardcoded table names
 		usersTableName := "users"
 		tweetsTableName := "tweets"
-		fmt.Printf("Using DynamoDB tables: Users='%s', Tweets='%s'\n", usersTableName, tweetsTableName)
+		slog.Info("Using DynamoDB tables", "usersTable", usersTableName, "tweetsTable", tweetsTableName)
 
 		// Initialize DynamoDB repositories
 		ddbUserRepo := dynamodbRepo.NewDynamoDBUserRepository(cfg, usersTableName)
@@ -66,7 +78,7 @@ func main() {
 		tweetRepository = dynamodbRepo.NewDynamoDBTweetRepository(cfg, tweetsTableName, ddbUserRepo, timelineCache)
 
 	} else {
-		fmt.Println("Initializing in-memory repositories...")
+		slog.Info("Initializing in-memory repositories...")
 		timelineCache = nil
 		// Initialize in-memory repositories
 		memUserRepo := memoryRepo.NewUserRepository()
@@ -74,6 +86,7 @@ func main() {
 		tweetRepository = memoryRepo.NewTweetRepository(memUserRepo)
 	}
 
+	slog.Info("Initializing use cases...")
 	// Initialize use cases (inject cache into UserUseCase)
 	userUseCase := usecase.NewUserUseCase(userRepository, timelineCache)
 	tweetUseCase := usecase.NewTweetUseCase(tweetRepository, userRepository)
@@ -82,26 +95,40 @@ func main() {
 	userHandler := handler.NewUserHandler(userUseCase)
 	tweetHandler := handler.NewTweetHandler(tweetUseCase)
 
+	slog.Info("Initializing API handlers and registering routes...")
 	// Register routes
 	userHandler.RegisterRoutes()
 	tweetHandler.RegisterRoutes()
 
 	// Run based on the determined mode
 	if runMode == "lambda" {
-		fmt.Println("Running in Lambda mode")
+		slog.Info("Starting Lambda handler")
 		// Use httpadapter to wrap the existing http.Handler (DefaultServeMux)
 		httpAdapter = httpadapter.New(http.DefaultServeMux)
 		lambda.Start(LambdaHandler)
 	} else {
-		fmt.Println("Running in local/Docker mode")
+		slog.Info("Starting HTTP server", "port", 8080)
 		// Start HTTP server
-		log.Println("Server starting on port 8080")
-		log.Println("API is ready to use!")
-		log.Fatal(http.ListenAndServe(":8080", nil))
+		if err := http.ListenAndServe(":8080", nil); err != nil {
+			slog.Error("HTTP server failed", "error", err)
+			os.Exit(1)
+		}
 	}
 }
 
 // LambdaHandler proxies requests to the httpAdapter
 func LambdaHandler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	return httpAdapter.ProxyWithContext(ctx, req)
+	// Add basic request logging
+	slog.InfoContext(ctx, "Received Lambda request", "method", req.HTTPMethod, "path", req.Path, "requestID", req.RequestContext.RequestID)
+	// Note: Consider adding more details like User-Agent, source IP if needed
+
+	response, err := httpAdapter.ProxyWithContext(ctx, req)
+
+	// Log response status
+	if err != nil {
+		slog.ErrorContext(ctx, "Lambda handler error", "error", err)
+	} else {
+		slog.InfoContext(ctx, "Sending Lambda response", "statusCode", response.StatusCode)
+	}
+	return response, err
 }
